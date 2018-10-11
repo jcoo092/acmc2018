@@ -4,8 +4,13 @@ open System
 
 type IO = bool
 
-type L1 = {a: bool; Xi: int; T: int;}
-type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; Ri: int; Gi: int; Bi: int; Ti: int; XY: bool;} with //For XY, true means X, false means Y
+type Colour =
+    | Red of int
+    | Green of int
+    | Blue of int
+
+type L1 = {a: bool; Xi: int; T: bool;}
+type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; C: Colour list; T: bool; XY: bool;} with //For XY, true means X, false means Y
     member this.Guard () =
         this.s
 
@@ -20,61 +25,125 @@ let r1i i (maxSteps: int) l1 =
         l1
 
 let r12n3 i l1 l0 =
-    if l1.a && l1.T > 0 then
+    if l1.a && l1.T then
         () // send out yes
     else
         () // do nothing
 
 let r12n4 i maxSteps l1 =
-    if l1.a && l1.Xi = (maxSteps + 1) && l1.T > 0 then // The T part is a guard here
+    if l1.a && l1.Xi = (maxSteps + 1) && l1.T then // The T part is a guard here
         () // send out no
     else
         () // do nothing
 
-let r22i1 i (l2: L2) =
+let r22im1 i (l2: L2) =
     //if l2.s then // l2.s representing the guard
     //if l2.Guard() then
     if guardSExists l2 then
-        [{l2 with Ri = l2.Ri + 1; Ai = l2.Ai + 1}; {l2 with Ai = 0; Ti = l2.Ai}]
+        //[{l2 with Ri = i; Ai = i + 1;}; {l2 with Ai = 0; T = true}]
+        [{l2 with C = Red i :: l2.C; Ai = i + 1;}; {l2 with Ai = 0; T = true}]
     else
         [l2]
 
-let r22i l2 i n =
-    if l2.Ti > 0 && i <= (n-1) then
-        [{l2 with Bi = 1; Ai = i + 1; Ti = 0;}; {l2 with Gi = 1; Ai = i + 1; Ti = 0;}]
+let r22i i n l2  =
+    if l2.T && i < n then
+        //[{l2 with Bi = i; Ai = i + 1; T = false;}; {l2 with Gi = i; Ai = i + 1; T = false;}]
+        [{l2 with C = Blue i :: l2.C; Ai = i + 1; T = false;}; {l2 with C = Green i :: l2.C; Ai = i + 1; T = false;}]
     else
         [l2]
 
-let r22nm1 i l2 =
-    if l2.Ai = i && guardSExists l2 then //l2.s representing the guard
-        [{l2 with Ri = i; XY = true; Ai = 0; Ti = 0;}; {l2 with Ti = i;}]
+let r22Combo i n l2 = r22im1 i l2 |> List.collect (r22i i n)
+
+let r22nm1 n l2 =
+    if l2.Ai = n && guardSExists l2 then //l2.s representing the guard
+        [{l2 with C = Red n :: l2.C; XY = true; Ai = 0; T = false;}; {l2 with T = true;}]
     else
         [l2]
 
-let r22n i l2 =
-    if l2.Ti = i then
-        [{l2 with Ti = 0; Bi = i; XY = true}; {l2 with Ti = 0; Gi = i; XY = true;}]
+let r22n n l2 =
+    if l2.Ai = n then
+        [{l2 with T = false; C = Blue n :: l2.C; XY = true}; {l2 with T = false; C = Green n :: l2.C; XY = true;}]
     else
         [l2]
 
-let r22np1 i l2 Aij L2s =
-    if true then
+let r22nCombo n l2 = r22nm1 n l2 |> List.collect (r22n n)
+
+let guardColours l2 =
+    let checkSameColour edge =
+        let i,j = edge
+        List.contains (Red i) l2.C && List.contains (Red j) l2.C ||
+        List.contains (Blue i) l2.C && List.contains (Blue j) l2.C ||
+        List.contains (Green i) l2.C && List.contains (Green j) l2.C
+
+    List.exists checkSameColour l2.Aij
+
+let r22np1 l2 =
+    if guardColours l2 then
         {l2 with s = false;}
-        let neighbours = List.filter (fun (a,_) -> a = l2.Ai) Aij |> List.map snd
-        let bbb = Seq.any ()
     else
         l2
 
-let numNodes = 3
-let maxSteps = 2 * numNodes + 2
+(* let guardColours neighbours l2 =
+    List.exists (fun n -> false) neighbours
+
+let r22np1 n _Aij l2s l2 =
+    if true then
+        {l2 with s = false;}
+        let neighbours = List.filter (fun (a,_) -> a = l2.Ai) Aij //|> List.map snd
+        //let bbb = Seq.any ()
+    else
+        l2 *)
+
+//let numNodes = 3
+//let maxSteps = 2 * numNodes + 2
+
+let odd x = x % 2 <> 0
+let even x = x % 2 = 0
 
 [<EntryPoint>]
 let main argv =
     let mut iteration = 0
 
     let E = [(1, 2); (2,3); (1,3)]
+    let numNodes = List.length E
+    let maxSteps = 2 * numNodes + 2
 
-    let C1 = {a = true; Xi = 1; T = 0;}
-    let C2 = List.singleton {Ai = 1; Aij = E; s = true; Ri = 0; Gi = 0; Bi = 0; Ti = 0; XY = true;}
-    printfn "Hello World from F#!"
+    let mutable C1 = {a = true; Xi = 1; T = false;}
+    let mutable C2 = List.singleton {Ai = 1; Aij = E; s = true; C = List.empty; T = false; XY = true;}
+
+    // using C1.Xi as the counter
+    while C1.Xi <= maxSteps do
+        let i = C1.Xi
+        C1 <- r1i i maxSteps C1
+        if odd i then
+            C2 <- List.collect (r22im1 ((i - 1) / 2)) C2
+        else
+            C2 <- List.collect (r22i (i / 2) numNodes) C2
+
+    printfn "C1: %A" C1
+    List.iter (fun c -> printfn "%A" c) C2
+
+    (* for i in 1..(numNodes - 1) do
+        C1 <- r1i i maxSteps C1
+        C2 <- List.collect (r22Combo i numNodes) C2
+
+    //printfn "C1: %A" C1
+    //printfn "C2: %A" C2
+
+    C2 <- List.collect (r22nCombo numNodes) C2
+    C2 <- List.map r22np1 C2 |> List.filter (fun c -> c.s)
+
+    printfn "C1: %A" C1
+    //printfn "C2: %A" C2
+    List.iter (fun c -> printfn "%A" c) C2
+
+    if not (List.isEmpty C2) then
+        () //send a T to C1
+    else
+        () // do nothing *)
+
+    // if C1 has a T, report true
+    // else, report false
+
+    //printfn "Hello World from F#!"
     0 // return an integer exit code
