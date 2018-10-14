@@ -1,6 +1,9 @@
 ﻿// Learn more about F# at http://fsharp.org
 
 open System
+open Hopac
+open Hopac.Infixes
+open Hopac
 
 type IO = bool
 
@@ -9,10 +12,33 @@ type Colour =
     | Green of int
     | Blue of int
 
-type L1 = {a: bool; Xi: int; T: bool;}
-type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; C: Colour list; T: bool; XY: bool;} with //For XY, true means X, false means Y
-    member this.Guard () =
-        this.s
+type L0 = {isPossible: bool; chan: Ch<bool>} with
+    member this.recv () = job {
+           return! Ch.take this.chan
+       }
+
+type L1 = {a: bool; Xi: int; T: bool; chan: Ch<bool>} with
+
+    member this.recv () = job {
+           let! newT = Ch.take this.chan
+           return newT
+       }
+    member this.sendToEnvironment (env: L0) = job {
+            do! Ch.give env.chan this.T
+    }
+        
+    
+
+type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; C: Colour list; T: bool;
+             XY: bool;} with //For XY, true means X, false means Y
+(*     member this.Guard () =
+        this.s *)
+    member this.send (c1: L1) = job {
+        if this.T then
+            do! Ch.give c1.chan this.T
+        else
+            ()
+    }
 
 let guardSExists l2 = l2.s
 
@@ -20,7 +46,7 @@ let guardSExists l2 = l2.s
 
 let r1i i (maxSteps: int) l1 =
     if i <= maxSteps then
-        {l1 with Xi = l1.Xi + 1;}
+        {l1 with Xi = i + 1;}
     else
         l1
 
@@ -104,33 +130,49 @@ let even x = x % 2 = 0
 let main argv =
     let mut iteration = 0
 
-    let E = [(1, 2); (2,3); (1,3)]
+    let E = [(1, 2); (2,3); (1,3); (1,4);]
     let numNodes = List.length E
     let maxSteps = 2 * numNodes + 2
 
-    let mutable C1 = {a = true; Xi = 1; T = false;}
+    let mutable env = {isPossible = false; chan = Ch ()}
+    let mutable C1 = {a = true; Xi = 1; T = false; chan = Ch()}
     let mutable C2 = List.singleton {Ai = 1; Aij = E; s = true; C = List.empty; T = false; XY = true;}
 
     // using C1.Xi as the counter
-    while C1.Xi <= maxSteps do
+    while C1.Xi <= (maxSteps - 4) do
         let i = C1.Xi
         C1 <- r1i i maxSteps C1
         if odd i then
-            C2 <- List.collect (r22im1 ((i - 1) / 2)) C2
+            let j = (i + 1) / 2
+            //printfn "j = %d" j
+            C2 <- List.collect (r22im1 j) C2
         else
-            C2 <- List.collect (r22i (i / 2) numNodes) C2
+            let j = i / 2
+            //printfn "j = %d" j
+            C2 <- List.collect (r22i j numNodes) C2
+
+    C2 <- List.collect (r22nCombo numNodes) C2
+    C2 <- List.map r22np1 C2 |> List.filter (fun c -> c.s)
 
     printfn "C1: %A" C1
     List.iter (fun c -> printfn "%A" c) C2
+
+    let sends = List.filter (fun c -> c.T) C2 |> List.map (fun (c: L2) -> c.send C1)
+    Job.conIgnore sends |> ignore
+    let finalT = Job.start (C1.recv()) |> run
+
 
     (* for i in 1..(numNodes - 1) do
         C1 <- r1i i maxSteps C1
         C2 <- List.collect (r22Combo i numNodes) C2
 
+    printfn "C1: %A" C1
+    List.iter (fun c -> printfn "%A" c) C2 *)
+
     //printfn "C1: %A" C1
     //printfn "C2: %A" C2
 
-    C2 <- List.collect (r22nCombo numNodes) C2
+    (* C2 <- List.collect (r22nCombo numNodes) C2
     C2 <- List.map r22np1 C2 |> List.filter (fun c -> c.s)
 
     printfn "C1: %A" C1
