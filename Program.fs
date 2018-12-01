@@ -3,7 +3,7 @@
 open System
 open Hopac
 open Hopac.Infixes
-open Hopac
+
 
 type IO = bool
 
@@ -26,8 +26,8 @@ type L1 = {a: bool; Xi: int; T: bool; chan: Ch<bool>} with
     member this.sendToEnvironment (env: L0) = job {
             do! Ch.give env.chan this.T
     }
-        
-    
+
+
 
 type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; C: Colour list; T: bool;
              XY: bool;} with //For XY, true means X, false means Y
@@ -123,8 +123,10 @@ let r22np1 n _Aij l2s l2 =
 //let numNodes = 3
 //let maxSteps = 2 * numNodes + 2
 
-let odd x = x % 2 <> 0
-let even x = x % 2 = 0
+(* let odd x = x % 2 <> 0
+let even x = x % 2 = 0 *)
+
+let (|Even|Odd|) num = if num % 2 = 0 then Even else Odd
 
 [<EntryPoint>]
 let main argv =
@@ -142,13 +144,22 @@ let main argv =
     while C1.Xi <= (maxSteps - 4) do
         let i = C1.Xi
         C1 <- r1i i maxSteps C1
-        if odd i then
+        (* if odd i then
             let j = (i + 1) / 2
             //printfn "j = %d" j
             C2 <- List.collect (r22im1 j) C2
         else
             let j = i / 2
             //printfn "j = %d" j
+            C2 <- List.collect (r22i j numNodes) C2 *)
+
+
+        match i with
+        | Odd ->
+            let j = (i + 1) / 2
+            C2 <- List.collect (r22im1 j) C2
+        | Even ->
+            let j = i / 2
             C2 <- List.collect (r22i j numNodes) C2
 
     C2 <- List.collect (r22nCombo numNodes) C2
@@ -159,6 +170,7 @@ let main argv =
 
     let sends = List.filter (fun c -> c.T) C2 |> List.map (fun (c: L2) -> c.send C1)
     Job.conIgnore sends |> ignore
+    let cc = C1.recv() |> Promise.start |> run
     let finalT = Job.start (C1.recv()) |> run
 
 

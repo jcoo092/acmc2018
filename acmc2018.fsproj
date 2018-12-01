@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.fs" />
+    <!-- <Compile Include="Program2.fs" /> -->
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="hopac" Version="0.4.1" />
