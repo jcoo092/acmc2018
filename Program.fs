@@ -3,6 +3,7 @@
 open System
 open Hopac
 open Hopac.Infixes
+open Hopac
 
 
 type IO = bool
@@ -20,8 +21,8 @@ type L0 = {isPossible: bool; chan: Ch<bool>} with
 type L1 = {a: bool; Xi: int; T: bool; chan: Ch<bool>} with
 
     member this.recv () = job {
-           let! newT = Ch.take this.chan
-           return newT
+           printfn "L1 started receiving"
+           return! Ch.take this.chan
        }
     member this.sendToEnvironment (env: L0) = job {
             do! Ch.give env.chan this.T
@@ -34,8 +35,10 @@ type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; C: Colour list; T: bool;
 (*     member this.Guard () =
         this.s *)
     member this.send (c1: L1) = job {
-        if this.T then
+        printfn "L2 send entered"
+        if this.s then
             do! Ch.give c1.chan this.T
+            printfn "L2 finished sending"
         else
             ()
     }
@@ -52,7 +55,7 @@ let r1i i (maxSteps: int) l1 =
 
 let r12n3 i l1 l0 =
     if l1.a && l1.T then
-        () // send out yes
+        run (l1.sendToEnvironment l0)
     else
         () // do nothing
 
@@ -132,7 +135,7 @@ let (|Even|Odd|) num = if num % 2 = 0 then Even else Odd
 let main argv =
     let mut iteration = 0
 
-    let E = [(1, 2); (2,3); (1,3); (1,4);]
+    let E = [(1, 2); (2,3); (3,4);]
     let numNodes = List.length E
     let maxSteps = 2 * numNodes + 2
 
@@ -165,13 +168,19 @@ let main argv =
     C2 <- List.collect (r22nCombo numNodes) C2
     C2 <- List.map r22np1 C2 |> List.filter (fun c -> c.s)
 
-    printfn "C1: %A" C1
-    List.iter (fun c -> printfn "%A" c) C2
+    //printfn "C1: %A" C1
+    //List.iter (fun c -> printfn "%A" c) C2
 
-    let sends = List.filter (fun c -> c.T) C2 |> List.map (fun (c: L2) -> c.send C1)
-    Job.conIgnore sends |> ignore
-    let cc = C1.recv() |> Promise.start |> run
-    let finalT = Job.start (C1.recv()) |> run
+    let getAnswer = Promise.Now.delay (C1.recv())
+
+    //let sends = List.filter (fun c -> c.T) C2 |> List.map (fun (c: L2) -> c.send C1)
+    //Job.conIgnore sends |> ignore
+    let send = List.head C2
+    Job.start (send.send C1) |> run
+    printfn "conIgnore finished"
+    //let finalT = Promise.Now.delay (C1.recv()) |> run
+    let finalT = run (getAnswer)
+    printfn "finalT: %A" finalT
 
 
     (* for i in 1..(numNodes - 1) do
