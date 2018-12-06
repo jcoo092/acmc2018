@@ -65,7 +65,6 @@ let r22im1 i (l2: L2) =
     if guardSExists l2 then // actually does nothing here really
         [{l2 with C = Red i :: l2.C; Ai = i + 1;}; {l2 with Ai = 0; T = true}]
     else
-        //[l2]
         [l2]
 
 let r22i i n l2  =
@@ -120,12 +119,17 @@ let main argv =
                                 yield (i, j)
                     ] *)
 
+    (* let E = [
+        for i in 2..numNodes do
+            yield (1, i)
+    ] *)
+
     timer.Start()
 
     //let E = [(1, 2); (1, 3); (1, 4);]
     //let E = [(1, 2); (2, 3); (3, 4); (3, 5); (3, 6); (4, 7); (5, 9); (6, 7); (6, 10); (7, 11); (8, 9); (9, 10); (9, 12);]
     //let E = [(1, 2); (1, 3); (1, 4); (1, 5); (1, 6); (1, 7); (1, 8); (1, 9); (1, 10)]
-    let E = [(1, 10); (2, 10); (3, 10); (4, 10); (5, 10); (6, 10); (7, 10); (8, 10); (9, 10)]
+    let E = [(1, 3); (1, 4); (1, 6); (2, 4); (2, 5); (2, 7); (3, 5); (3, 8); (4, 9); (5, 10); (6, 7); (6, 10); (7, 8); (8, 9); (9, 10)] // Petersen graph
 
     let maxSteps = 2 * numNodes + 2
 
@@ -141,7 +145,7 @@ let main argv =
         match i with
         | Odd ->
             let j = (i + 1) / 2
-            C2 <- List.collect (r22im1 j) C2 //|> List.filter guardColours
+            C2 <- List.collect (r22im1 j) C2 |> List.map r22np1 |> List.filter (fun c -> c.s)
         | Even ->
             let j = i / 2
             C2 <- List.collect (r22i j numNodes) C2
