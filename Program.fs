@@ -26,21 +26,15 @@ type L1 = {a: bool; Xi: int; T: bool; chan: Ch<OutcomeMessage>; solution: Colour
     }
 
     member this.recv () = job {
-           //printfn "L1 started receiving"
            let! (t, sol) = Ch.take this.chan
-           //return! Ch.take this.chan
            return {this with T = t; solution = sol;}
        }
 
 
 type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; C: Colour list; T: bool;} with
-(*     member this.Guard () =
-        this.s *)
     member this.send (c1: L1) = job {
-        //printfn "L2 send entered"
         if this.s then
             do! Ch.give c1.chan (true, Some(this.C))
-            //printfn "L2 finished sending"
         else
             ()
     }
@@ -116,7 +110,6 @@ let (|Even|Odd|) num = if num % 2 = 0 then Even else Odd
 
 [<EntryPoint>]
 let main argv =
-    //let mut iteration = 0
 
     let E = [(1, 2); (1, 3); (1, 4);]
     let numNodes = 4 //List.length E
