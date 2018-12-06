@@ -3,6 +3,7 @@
 open System
 open Hopac
 open Hopac.Infixes
+open Hopac
 
 
 type IO = bool
@@ -12,32 +13,34 @@ type Colour =
     | Green of int
     | Blue of int
 
-type L0 = {isPossible: bool; chan: Ch<bool>} with
+type OutcomeMessage = IO * Colour list option
+
+type L0 = {isPossible: bool; chan: Ch<OutcomeMessage>} with
     member this.recv () = job {
            return! Ch.take this.chan
        }
 
-type L1 = {a: bool; Xi: int; T: bool; chan: Ch<bool>} with
-
-    member this.recv () = job {
-           printfn "L1 started receiving"
-           return! Ch.take this.chan
-       }
-    member this.sendToEnvironment (env: L0) = job {
-            do! Ch.give env.chan this.T
+type L1 = {a: bool; Xi: int; T: bool; chan: Ch<OutcomeMessage>; solution: Colour list option} with
+    member this.sendToEnvironment (env: L0)  = job {
+            do! Ch.give env.chan (this.T, this.solution)
     }
 
+    member this.recv () = job {
+           //printfn "L1 started receiving"
+           let! (t, sol) = Ch.take this.chan
+           //return! Ch.take this.chan
+           return {this with T = t; solution = sol;}
+       }
 
 
-type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; C: Colour list; T: bool;
-             XY: bool;} with //For XY, true means X, false means Y
+type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; C: Colour list; T: bool;} with
 (*     member this.Guard () =
         this.s *)
     member this.send (c1: L1) = job {
-        printfn "L2 send entered"
+        //printfn "L2 send entered"
         if this.s then
-            do! Ch.give c1.chan this.T
-            printfn "L2 finished sending"
+            do! Ch.give c1.chan (true, Some(this.C))
+            //printfn "L2 finished sending"
         else
             ()
     }
@@ -82,13 +85,13 @@ let r22Combo i n l2 = r22im1 i l2 |> List.collect (r22i i n)
 
 let r22nm1 n l2 =
     if l2.Ai = n && guardSExists l2 then //l2.s representing the guard
-        [{l2 with C = Red n :: l2.C; XY = true; Ai = 0; T = false;}; {l2 with T = true;}]
+        [{l2 with C = Red n :: l2.C; Ai = l2.Ai + 1; T = false;}; {l2 with T = true;}]
     else
         [l2]
 
 let r22n n l2 =
     if l2.Ai = n then
-        [{l2 with T = false; C = Blue n :: l2.C; XY = true}; {l2 with T = false; C = Green n :: l2.C; XY = true;}]
+        [{l2 with T = false; C = Blue n :: l2.C; }; {l2 with T = false; C = Green n :: l2.C; }]
     else
         [l2]
 
@@ -101,7 +104,7 @@ let guardColours l2 =
         List.contains (Blue i) l2.C && List.contains (Blue j) l2.C ||
         List.contains (Green i) l2.C && List.contains (Green j) l2.C
 
-    List.exists checkSameColour l2.Aij
+    List.exists checkSameColour (l2.Aij)
 
 let r22np1 l2 =
     if guardColours l2 then
@@ -113,15 +116,15 @@ let (|Even|Odd|) num = if num % 2 = 0 then Even else Odd
 
 [<EntryPoint>]
 let main argv =
-    let mut iteration = 0
+    //let mut iteration = 0
 
-    let E = [(1, 2); (2,3); (3,4);]
-    let numNodes = List.length E
+    let E = [(1, 2); (1, 3); (1, 4);]
+    let numNodes = 4 //List.length E
     let maxSteps = 2 * numNodes + 2
 
     let mutable env = {isPossible = false; chan = Ch ()}
-    let mutable C1 = {a = true; Xi = 1; T = false; chan = Ch()}
-    let mutable C2 = List.singleton {Ai = 1; Aij = E; s = true; C = List.empty; T = false; XY = true;}
+    let mutable C1 = {a = true; Xi = 1; T = false; chan = Ch(); solution = None}
+    let mutable C2 = List.singleton {Ai = 1; Aij = E; s = true; C = List.empty; T = false; }
 
     // using C1.Xi as the counter
     while C1.Xi <= (maxSteps - 4) do
@@ -144,13 +147,23 @@ let main argv =
 
     let getAnswer = Promise.Now.delay (C1.recv())
 
-    let send = List.head C2
-    Job.start (send.send C1) |> run
-    let finalT = run (getAnswer)
-    printfn "finalT: %A" finalT
+    let communication =
+        if List.isEmpty C2 then
+            job {do! Ch.give C1.chan (false, None)}
+        else
+            let sender = List.head C2
+            sender.send C1
 
-    // if C1 has a T, report true
-    // else, report false
+    Job.start communication |> run
+
+    C1 <- run (getAnswer)
+
+    Job.start (C1.sendToEnvironment env) |> run
+    let (_, outcome) = env.recv() |> run
+
+    match outcome with
+    | Some colours -> printfn "Colouring is possible!  A potential solution is:  %A" colours
+    | None -> printfn "No colouring is possible!"
 
     //printfn "Hello World from F#!"
     0 // return an integer exit code
