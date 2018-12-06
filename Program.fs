@@ -3,7 +3,6 @@
 open System
 open Hopac
 open Hopac.Infixes
-open Hopac
 
 
 type IO = bool
@@ -69,14 +68,12 @@ let r22im1 i (l2: L2) =
     //if l2.s then // l2.s representing the guard
     //if l2.Guard() then
     if guardSExists l2 then
-        //[{l2 with Ri = i; Ai = i + 1;}; {l2 with Ai = 0; T = true}]
         [{l2 with C = Red i :: l2.C; Ai = i + 1;}; {l2 with Ai = 0; T = true}]
     else
         [l2]
 
 let r22i i n l2  =
     if l2.T && i < n then
-        //[{l2 with Bi = i; Ai = i + 1; T = false;}; {l2 with Gi = i; Ai = i + 1; T = false;}]
         [{l2 with C = Blue i :: l2.C; Ai = i + 1; T = false;}; {l2 with C = Green i :: l2.C; Ai = i + 1; T = false;}]
     else
         [l2]
@@ -112,23 +109,6 @@ let r22np1 l2 =
     else
         l2
 
-(* let guardColours neighbours l2 =
-    List.exists (fun n -> false) neighbours
-
-let r22np1 n _Aij l2s l2 =
-    if true then
-        {l2 with s = false;}
-        let neighbours = List.filter (fun (a,_) -> a = l2.Ai) Aij //|> List.map snd
-        //let bbb = Seq.any ()
-    else
-        l2 *)
-
-//let numNodes = 3
-//let maxSteps = 2 * numNodes + 2
-
-(* let odd x = x % 2 <> 0
-let even x = x % 2 = 0 *)
-
 let (|Even|Odd|) num = if num % 2 = 0 then Even else Odd
 
 [<EntryPoint>]
@@ -147,15 +127,6 @@ let main argv =
     while C1.Xi <= (maxSteps - 4) do
         let i = C1.Xi
         C1 <- r1i i maxSteps C1
-        (* if odd i then
-            let j = (i + 1) / 2
-            //printfn "j = %d" j
-            C2 <- List.collect (r22im1 j) C2
-        else
-            let j = i / 2
-            //printfn "j = %d" j
-            C2 <- List.collect (r22i j numNodes) C2 *)
-
 
         match i with
         | Odd ->
@@ -173,37 +144,10 @@ let main argv =
 
     let getAnswer = Promise.Now.delay (C1.recv())
 
-    //let sends = List.filter (fun c -> c.T) C2 |> List.map (fun (c: L2) -> c.send C1)
-    //Job.conIgnore sends |> ignore
     let send = List.head C2
     Job.start (send.send C1) |> run
-    printfn "conIgnore finished"
-    //let finalT = Promise.Now.delay (C1.recv()) |> run
     let finalT = run (getAnswer)
     printfn "finalT: %A" finalT
-
-
-    (* for i in 1..(numNodes - 1) do
-        C1 <- r1i i maxSteps C1
-        C2 <- List.collect (r22Combo i numNodes) C2
-
-    printfn "C1: %A" C1
-    List.iter (fun c -> printfn "%A" c) C2 *)
-
-    //printfn "C1: %A" C1
-    //printfn "C2: %A" C2
-
-    (* C2 <- List.collect (r22nCombo numNodes) C2
-    C2 <- List.map r22np1 C2 |> List.filter (fun c -> c.s)
-
-    printfn "C1: %A" C1
-    //printfn "C2: %A" C2
-    List.iter (fun c -> printfn "%A" c) C2
-
-    if not (List.isEmpty C2) then
-        () //send a T to C1
-    else
-        () // do nothing *)
 
     // if C1 has a T, report true
     // else, report false
