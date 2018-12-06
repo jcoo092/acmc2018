@@ -62,11 +62,10 @@ let r12n4 i maxSteps l1 =
         () // do nothing
 
 let r22im1 i (l2: L2) =
-    //if l2.s then // l2.s representing the guard
-    //if l2.Guard() then
-    if guardSExists l2 then
+    if guardSExists l2 then // actually does nothing here really
         [{l2 with C = Red i :: l2.C; Ai = i + 1;}; {l2 with Ai = 0; T = true}]
     else
+        //[l2]
         [l2]
 
 let r22i i n l2  =
@@ -111,8 +110,23 @@ let (|Even|Odd|) num = if num % 2 = 0 then Even else Odd
 [<EntryPoint>]
 let main argv =
 
-    let E = [(1, 2); (1, 3); (1, 4);]
-    let numNodes = 4 //List.length E
+    let timer = System.Diagnostics.Stopwatch ()
+
+    let numNodes = 10
+
+    (* let E = [for i in 1..numNodes do
+                        for j in i..numNodes do
+                            if i <> j then
+                                yield (i, j)
+                    ] *)
+
+    timer.Start()
+
+    //let E = [(1, 2); (1, 3); (1, 4);]
+    //let E = [(1, 2); (2, 3); (3, 4); (3, 5); (3, 6); (4, 7); (5, 9); (6, 7); (6, 10); (7, 11); (8, 9); (9, 10); (9, 12);]
+    //let E = [(1, 2); (1, 3); (1, 4); (1, 5); (1, 6); (1, 7); (1, 8); (1, 9); (1, 10)]
+    let E = [(1, 10); (2, 10); (3, 10); (4, 10); (5, 10); (6, 10); (7, 10); (8, 10); (9, 10)]
+
     let maxSteps = 2 * numNodes + 2
 
     let mutable env = {isPossible = false; chan = Ch ()}
@@ -127,7 +141,7 @@ let main argv =
         match i with
         | Odd ->
             let j = (i + 1) / 2
-            C2 <- List.collect (r22im1 j) C2
+            C2 <- List.collect (r22im1 j) C2 //|> List.filter guardColours
         | Even ->
             let j = i / 2
             C2 <- List.collect (r22i j numNodes) C2
@@ -154,9 +168,13 @@ let main argv =
     Job.start (C1.sendToEnvironment env) |> run
     let (_, outcome) = env.recv() |> run
 
+    timer.Stop()
+
     match outcome with
     | Some colours -> printfn "Colouring is possible!  A potential solution is:  %A" colours
     | None -> printfn "No colouring is possible!"
+
+    printfn "Total time taken was %02fs" timer.Elapsed.TotalSeconds
 
     //printfn "Hello World from F#!"
     0 // return an integer exit code
