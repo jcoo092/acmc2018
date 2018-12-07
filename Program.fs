@@ -109,23 +109,23 @@ let main argv =
 
     let timer = System.Diagnostics.Stopwatch ()
 
-    let numNodes = 12
+    let numNodes = 150
 
-    (* let E = [for i in 1..numNodes do
+    let E = [|for i in 1..numNodes do
                         for j in i..numNodes do
                             if i <> j then
                                 yield (i, j)
-                    ] *)
+                    |]
 
-    (* let E = [
+    (* let E = [|
         for i in 2..numNodes do
             yield (1, i)
-    ] *)
+    |] *)
 
     timer.Start()
 
     //let E = [(1, 2); (1, 3); (1, 4);]
-    let E = [|(1, 2); (2, 3); (3, 4); (3, 5); (3, 6); (4, 7); (5, 9); (6, 7); (6, 10); (7, 11); (8, 9); (9, 10); (9, 12);|]
+    //let E = [|(1, 2); (2, 3); (3, 4); (3, 5); (3, 6); (4, 7); (5, 9); (6, 7); (6, 10); (7, 11); (8, 9); (9, 10); (9, 12);|]
     //let E = [(1, 2); (1, 3); (1, 4); (1, 5); (1, 6); (1, 7); (1, 8); (1, 9); (1, 10)]
     //let E = [|(1, 3); (1, 4); (1, 6); (2, 4); (2, 5); (2, 7); (3, 5); (3, 8); (4, 9); (5, 10); (6, 7); (6, 10); (7, 8); (8, 9); (9, 10)|] // Petersen graph
 
@@ -143,7 +143,7 @@ let main argv =
         match i with
         | Odd ->
             let j = (i + 1) / 2
-            C2 <- List.collect (r22im1 j) C2 //|> List.map r22np1 |> List.filter (fun c -> c.s)
+            C2 <- List.collect (r22im1 j) C2 |> List.map r22np1 |> List.filter (fun c -> c.s)
         | Even ->
             let j = i / 2
             C2 <- List.collect (r22i j numNodes) C2
