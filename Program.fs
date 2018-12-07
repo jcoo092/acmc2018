@@ -29,7 +29,7 @@ type L1 = {a: bool; Xi: int; T: bool; chan: Ch<OutcomeMessage>; solution: Colour
        }
 
 
-type L2 = {Ai: int; Aij: List<Tuple<int,int>>; s: bool; C: Colour list; T: bool;} with
+type L2 = {Ai: int; Aij: Tuple<int,int>[]; s: bool; C: Colour list; T: bool;} with
     member this.send (c1: L1) = job {
         if this.s then
             do! Ch.give c1.chan (true, Some(this.C))
@@ -94,7 +94,7 @@ let guardColours l2 =
         List.contains (Blue i) l2.C && List.contains (Blue j) l2.C ||
         List.contains (Green i) l2.C && List.contains (Green j) l2.C
 
-    List.exists checkSameColour (l2.Aij)
+    Array.exists checkSameColour (l2.Aij)
 
 let r22np1 l2 =
     if guardColours l2 then
@@ -109,7 +109,7 @@ let main argv =
 
     let timer = System.Diagnostics.Stopwatch ()
 
-    let numNodes = 10
+    let numNodes = 12
 
     (* let E = [for i in 1..numNodes do
                         for j in i..numNodes do
@@ -125,9 +125,9 @@ let main argv =
     timer.Start()
 
     //let E = [(1, 2); (1, 3); (1, 4);]
-    //let E = [(1, 2); (2, 3); (3, 4); (3, 5); (3, 6); (4, 7); (5, 9); (6, 7); (6, 10); (7, 11); (8, 9); (9, 10); (9, 12);]
+    let E = [|(1, 2); (2, 3); (3, 4); (3, 5); (3, 6); (4, 7); (5, 9); (6, 7); (6, 10); (7, 11); (8, 9); (9, 10); (9, 12);|]
     //let E = [(1, 2); (1, 3); (1, 4); (1, 5); (1, 6); (1, 7); (1, 8); (1, 9); (1, 10)]
-    let E = [(1, 3); (1, 4); (1, 6); (2, 4); (2, 5); (2, 7); (3, 5); (3, 8); (4, 9); (5, 10); (6, 7); (6, 10); (7, 8); (8, 9); (9, 10)] // Petersen graph
+    //let E = [|(1, 3); (1, 4); (1, 6); (2, 4); (2, 5); (2, 7); (3, 5); (3, 8); (4, 9); (5, 10); (6, 7); (6, 10); (7, 8); (8, 9); (9, 10)|] // Petersen graph
 
     let maxSteps = 2 * numNodes + 2
 
@@ -143,7 +143,7 @@ let main argv =
         match i with
         | Odd ->
             let j = (i + 1) / 2
-            C2 <- List.collect (r22im1 j) C2 |> List.map r22np1 |> List.filter (fun c -> c.s)
+            C2 <- List.collect (r22im1 j) C2 //|> List.map r22np1 |> List.filter (fun c -> c.s)
         | Even ->
             let j = i / 2
             C2 <- List.collect (r22i j numNodes) C2
