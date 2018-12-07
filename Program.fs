@@ -1,9 +1,7 @@
 ﻿// Learn more about F# at http://fsharp.org
 
+open Hopac
 open System
-open Hopac
-open Hopac.Infixes
-open Hopac
 
 
 type IO = bool
